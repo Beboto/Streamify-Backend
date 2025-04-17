@@ -25,8 +25,11 @@ export const verifyJWT = asyncHandler(async(req, _, next) => {
     
         // set the user in request object for further use and call next middleware
         req.user = user;
+
+        // since the token is valid, we can call next middleware
         next()
-    } catch (error) {
+    } 
+    catch (error) {
         throw new ApiError(401, error?.message || "Invalid access token")
     }
     
