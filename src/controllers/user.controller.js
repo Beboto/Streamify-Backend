@@ -386,6 +386,7 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
 })
 
 
+// Method to get the user channel profile using username
 const getUserChannelProfile = asyncHandler(async(req, res) => {
     // get the username from request params (i.e url api/user/:username) 
     const {username} = req.params
@@ -460,6 +461,60 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
 })
 
 
+// Method to get the watch history of the user
+const getWatchHistory = asyncHandler(async(req, res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)  // create a new object id from the user id in request object and match it in db
+            }
+        },
+        {
+            $lookup: {                                          // lookup the videos collection to get the watch history of the user
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [                                    // create a sub-pipeline to get the video details and owner details
+                    {
+                        $lookup: {                             // lookup the user collection to get the owner details
+                            from: "users",                    
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [                        // create a sub-pipeline to get the owner details
+                                {
+                                    $project: {                // projects only the required fields to be sent in response
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields:{                           // overwrite the owner field to get the first element of the owner array
+                            owner:{
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,                            // data is the watch history of the user
+            "Watch history fetched successfully"
+        )
+    )
+})
 
 
 export {
@@ -472,5 +527,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 }
