@@ -386,6 +386,80 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
 })
 
 
+const getUserChannelProfile = asyncHandler(async(req, res) => {
+    // get the username from request params (i.e url api/user/:username) 
+    const {username} = req.params
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "username is missing")
+    }
+
+    // use aggregate to get the user channel profile using username
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()   // match the username in db
+            }
+        },
+        {
+            $lookup: {                              // lookup the subscriptions collection to get the subscribers count
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {                              // lookup the subscriptions collection to get the channels subscribed-to count
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {                           // add fields to the user object
+                subscribersCount: {
+                    $size: "$subscribers"           // get the subscribers count
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"          // get the channels subscribed-to count
+                },
+                isSubscribed: {                     // check if the user is subscribed to the channel or not
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},  
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {                             // projets only the required fields to be sent in response
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ])
+
+    if (!channel?.length) {
+        throw new ApiError(404, "Channel does not exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User channel fetched successfully")
+    )
+})
+
+
 
 
 export {
@@ -397,5 +471,6 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }
