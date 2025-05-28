@@ -312,7 +312,7 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
                 email: email
             }
         },
-        {new: true}
+        {new: true}        // to return the updated user object
         
     ).select("-password")  // remove password from response
 
