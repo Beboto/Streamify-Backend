@@ -6,7 +6,8 @@ import { User } from "../models/user.model.js";
 // export the verifyJWT middleware function
 export const verifyJWT = asyncHandler(async(req, _, next) => {
     try {
-        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+        // check both scenarios: 1) token in cookies, 2) token in Authorization header for mobile apps
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")  
         // console.log(token);
 
         if (!token) {
